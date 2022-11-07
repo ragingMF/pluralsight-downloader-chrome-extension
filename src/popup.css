@@ -163,8 +163,8 @@
 	--psLayoutSpacingLarge: 24px;
 	--psLayoutSpacingXLarge: 48px;
 	--psLayoutSpacingXXLarge: 64px;
-	--psTypeFontFamily: 'PS TT Commons Roman', 'Gotham SSm A', 'Gotham SSm B', Arial, sans-serif;
-	--psTypeFontFamilyCode: 'DM Mono', 'Source Code Pro', monospace;
+	--psTypeFontFamily: "PS TT Commons Roman", "Gotham SSm A", "Gotham SSm B", Arial, sans-serif;
+	--psTypeFontFamilyCode: "DM Mono", "Source Code Pro", monospace;
 	--psTypeFontSizeGigantic: 60px;
 	--psTypeFontSizeJumbo: 48px;
 	--psTypeFontSizeXXLarge: 36px;
@@ -247,7 +247,6 @@ body {
 main {
 	padding: var(--psLayoutSpacingXXSmall);
 }
-
 main > section {
 	display: flex;
 	margin: auto var(--psLayoutSpacingXXSmall);
@@ -274,9 +273,6 @@ label > span {
 	font-weight: var(--psTypeFontWeightBold);
 	flex-grow: 1;
 }
-
-.coursetype {}
-.coursetype > section {}
 .coursetype > section:not(:last-child) {
 	border-bottom: 1px solid var(--psColorsBorderHighOnDark);
 	padding-bottom: var(--psLayoutSpacingSmall);
@@ -288,15 +284,15 @@ label > span {
 	background: var(--psColorsBackgroundDark3);
 	padding: var(--psLayoutSpacingXXSmall) var(--psLayoutSpacingSmall);
 	border-radius: var(--psLayoutSpacingXXSmall);
- }
- .CourseType__submit {
+}
+.CourseType__submit {
 	margin-left: 2%;
 	padding: var(--psLayoutSpacingXXSmall) var(--psLayoutSpacingMedium);
 	border: none;
 	background-color: var(--psColorsBlueBase);
 	color: var(--psColorsBone);
 	border-radius: var(--psLayoutSpacingXXSmall);
- }
+}
 
 .status {
 	align-items: center;
@@ -342,17 +338,13 @@ label > span {
 .controls label {
 	margin-bottom: var(--psLayoutSpacingXXSmall);
 }
-.time {}
-.time > section { }
+
 .time > section:not(:last-child) {
 	border-bottom: 1px solid var(--psColorsBorderHighOnDark);
 	padding-bottom: var(--psLayoutSpacingSmall);
 	margin-bottom: var(--psLayoutSpacingSmall);
 }
-.delay { }
-.delay__label {}
-.max-duration__label { }
-.max-duration { }
+
 .max-duration__input {
 	background: var(--psColorsBackgroundDark3);
 	color: var(--psColorsBone);
@@ -368,8 +360,6 @@ label > span {
 	border-radius: var(--psLayoutSpacingXXSmall);
 }
 
-.leadingzero {}
-.leadingzero > section {}
 .leadingzero > section:not(:last-child) {
 	border-bottom: 1px solid var(--psColorsBorderHighOnDark);
 	padding-bottom: var(--psLayoutSpacingSmall);
@@ -380,22 +370,19 @@ label > span {
 	color: var(--psColorsBone);
 	background: var(--psColorsBackgroundDark3);
 	padding: var(--psLayoutSpacingXXSmall) var(--psLayoutSpacingSmall);
-	border-radius: var(--psLayoutSpacingXXSmall)
- }
+	border-radius: var(--psLayoutSpacingXXSmall);
+}
 .leading-zero {
 	width: 80%;
- }
- .leading-zero__submit {
+}
+.leading-zero__submit {
 	padding: var(--psLayoutSpacingXXSmall) var(--psLayoutSpacingMedium);
 	border: none;
 	background-color: var(--psColorsBlueBase);
 	color: var(--psColorsBone);
 	border-radius: var(--psLayoutSpacingXXSmall);
- }
-.leading-zero__label { }
+}
 
-.subtitle { }
-.subtitle > section { }
 .subtitle > section:not(:last-child) {
 	border-bottom: 1px solid var(--psColorsBorderHighOnDark);
 	padding-bottom: var(--psLayoutSpacingSmall);
@@ -406,7 +393,7 @@ label > span {
 	color: var(--psColorsBone);
 	background: var(--psColorsBackgroundDark3);
 	padding: var(--psLayoutSpacingXXSmall) var(--psLayoutSpacingSmall);
-	border-radius: var(--psLayoutSpacingXXSmall)
+	border-radius: var(--psLayoutSpacingXXSmall);
 }
 .primary-subtitle {
 	width: 80%;
@@ -459,7 +446,7 @@ label > span {
 .links__pluralsight {
 	width: 16px;
 	height: 16px;
-	background: url('./icons/pluralsight.png');
+	background: url("./icons/pluralsight.png");
 	background-repeat: none;
 }
 .links__github svg {

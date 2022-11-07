@@ -2,29 +2,29 @@
 // START:VARIABLES
 // =================================================================
 
-const APPNAME = 'PluralsightCourseDownloader'
-const ROOT_DIRECTORY = 'PluralsightCourseDownloader'
+const APPNAME = "PluralsightCourseDownloader";
+const ROOT_DIRECTORY = "PluralsightCourseDownloader";
 
-const INVALID_CHARACTERS = /[\/*?<>|']/g
-const DELIMINATOR = '.'
-const EXTENSION = 'mp4'
-const EXTENSION_SUBS = 'vtt'
+const INVALID_CHARACTERS = /[\/*?<>|']/g;
+const DELIMINATOR = ".";
+const EXTENSION = "mp4";
+const EXTENSION_SUBS = "vtt";
 
-const qualities = ['1280x720', '1024x768']
+const qualities = ["1280x720", "1024x768"];
 
-const DOWNLOAD_TIMEOUT = 3000
-let DURATION_PERCENT = 10 // percent max 100
+const DOWNLOAD_TIMEOUT = 3000;
+let DURATION_PERCENT = 10; // percent max 100
 
 // videoURL to get the actual video URL
-const viewclipURL = 'https://app.pluralsight.com/video/clips/v3/viewclip'
-const subsURL = 'https://app.pluralsight.com/transcript/api/v1/caption/webvtt'
+const viewclipURL = "https://app.pluralsight.com/video/clips/v3/viewclip";
+const subsURL = "https://app.pluralsight.com/transcript/api/v1/caption/webvtt";
 
 // STATE variables
-let EXTENSION_ENABLED = false
-let CONTINUE_DOWNLOAD = false
+let EXTENSION_ENABLED = false;
+let CONTINUE_DOWNLOAD = false;
 
-let CURRENT_SLEEP = null
-let CURRENT_INTERVAL = null
+let CURRENT_SLEEP = null;
+let CURRENT_INTERVAL = null;
 
 // =================================================================
 // END:VARIABLES
@@ -37,134 +37,133 @@ let CURRENT_INTERVAL = null
 // 	new Promise((resolve) => setTimeout(resolve, ms));
 
 const sleep = (millis, throwOnAborted = false) => {
-	let timeout_id
-	let rejector
+	let timeout_id;
+	let rejector;
 	const prom = new Promise((resolve, reject) => {
-		rejector = throwOnAborted ? reject : _ => resolve()
+		rejector = throwOnAborted ? reject : _ => resolve();
 
 		timeout_id = setTimeout(() => {
-			resolve()
-		}, millis)
-	})
+			resolve();
+		}, millis);
+	});
 	prom.abort = () => {
-		clearTimeout(timeout_id)
-		rejector('aborted')
-	}
-	return prom
-}
+		clearTimeout(timeout_id);
+		rejector("aborted");
+	};
+	return prom;
+};
 
 const updateWaitStats = timeStat => {
 	try {
-		return asyncInterval(writeTimeStat, timeStat)
+		return asyncInterval(writeTimeStat, timeStat);
 	} catch (e) {}
-}
+};
 
 const writeTimeStat = msStat => {
-	let toSec = new Date(msStat).toISOString().slice(14, -5)
-	chrome.runtime.sendMessage({ Status: `Waiting... ${toSec}` })
-}
+	let toSec = new Date(msStat).toISOString().slice(14, -5);
+	chrome.runtime.sendMessage({ Status: `Waiting... ${toSec}` });
+};
 
 const asyncInterval = (callback, msClear, msInterval = 1000) => {
-	let rejector
-	let interval
-	const prom = new Promise(resolove => {
-		rejector = _ => resolove()
+	let rejector;
+	let interval;
+	const prom = new Promise(resolve => {
+		rejector = _ => resolve();
 		interval = setInterval(() => {
-			if (msClear > 0) callback(msClear)
+			if (msClear > 0) callback(msClear);
 			else {
-				rejector()
-				clearInterval(interval)
+				rejector();
+				clearInterval(interval);
 			}
-			msClear -= msInterval
-		}, msInterval)
-	})
+			msClear -= msInterval;
+		}, msInterval);
+	});
 
 	prom.abort = () => {
-		clearInterval(interval)
-		rejector()
-	}
-	return prom
-}
+		clearInterval(interval);
+		rejector();
+	};
+	return prom;
+};
 
 const downloadFile = (link, filePath) => {
 	return new Promise((resolve, _) => {
 		chrome.runtime.sendMessage(
 			{
-				action: 'download-sync',
+				action: "download-sync",
 				link: link,
 				filePath: filePath,
 			},
 			response => resolve(response),
-		)
-	})
-}
+		);
+	});
+};
 
 const readSharedValue = async name =>
-	new Promise((resolve, _) => chrome.storage.sync.get(name, data => (data == null ? resolve() : resolve(data[name]))))
+	new Promise((resolve, _) => chrome.storage.sync.get(name, data => (data == null ? resolve() : resolve(data[name]))));
 
-const readSpeed = () => readSharedValue('speedPercent')
+const readSpeed = () => readSharedValue("speedPercent");
 
-const readMaxDuration = () => readSharedValue('maxDuration')
+const readMaxDuration = () => readSharedValue("maxDuration");
 
-const readAddedCourses = () => readSharedValue('AddedCourses')
+const readAddedCourses = () => readSharedValue("AddedCourses");
 
-const readSecondaryLanguageCode = () => readSharedValue('secondaryLanguage')
+const readSecondaryLanguageCode = () => readSharedValue("secondaryLanguage");
 
 const readIsLeadingZeroAlways = () => {
-	let isAlwaysLeadingZero = readSharedValue('isAlwaysLeadingZero')
-	if (isAlwaysLeadingZero === 'true') {
+	let isAlwaysLeadingZero = readSharedValue("isAlwaysLeadingZero");
+	if (isAlwaysLeadingZero === "true") {
 		return true;
 	}
 	return false;
-}
+};
 
-const readCourseType = () => readSharedValue('courseType')
+const readCourseType = () => readSharedValue("courseType");
 
-const log = (message, type = 'STATUS') => console.log(`[${APPNAME}]:[${type}]: ${message}`)
+const log = (message, type = "STATUS") => console.log(`[${APPNAME}]:[${type}]: ${message}`);
 
 const replaceQuotesWithSquareBrackets = name => {
-	let isFirstQuote = true
-	let newName = ''
+	let isFirstQuote = true;
+	let newName = "";
 	for (let i = 0; i < name.length; i++) {
 		switch (name[i]) {
 			case '"':
-				newName += isFirstQuote ? '[' : ']'
-				isFirstQuote = !isFirstQuote
-				break
+				newName += isFirstQuote ? "[" : "]";
+				isFirstQuote = !isFirstQuote;
+				break;
 			default:
-				newName += name[i]
+				newName += name[i];
 		}
 	}
-	newName = newName.replace('“', '[')
-	newName = newName.replace('”', ']')
-	return newName
-}
+	newName = newName.replace("“", "[");
+	newName = newName.replace("”", "]");
+	return newName;
+};
 
 const replaceColonsWithHyphen = name => {
-	let newName = name[0]
+	let newName = name[0];
 	for (let i = 1; i < name.length - 1; i++) {
-		if (name[i - 1] !== ' ' && name[i] === ':' && name[i + 1] !== ' ') {
-			newName += '-'
-		}
-		else {
-			newName += name[i]
+		if (name[i - 1] !== " " && name[i] === ":" && name[i + 1] !== " ") {
+			newName += "-";
+		} else {
+			newName += name[i];
 		}
 	}
-	newName += name[name.length - 1]
-	newName = newName.replace(':', ' -')
-	return newName
-}
+	newName += name[name.length - 1];
+	newName = newName.replace(":", " -");
+	return newName;
+};
 
 const removeInvalidCharacters = name => {
 	let clearedName = replaceQuotesWithSquareBrackets(name);
-	clearedName = replaceColonsWithHyphen(clearedName).replace(INVALID_CHARACTERS, '').trim();
-	return clearedName
-}
+	clearedName = replaceColonsWithHyphen(clearedName).replace(INVALID_CHARACTERS, "").trim();
+	return clearedName;
+};
 
 const getCurrentVideoId = () => {
-	const vIdMatch = location.search.match('clipId=?([0-9a-f-]*)')
-	return vIdMatch ? vIdMatch[1] : null
-}
+	const vIdMatch = location.search.match("clipId=?([0-9a-f-]*)");
+	return vIdMatch ? vIdMatch[1] : null;
+};
 
 // ====================================================================
 // END:UTILITIES
@@ -173,80 +172,80 @@ const getCurrentVideoId = () => {
 const getQuality = async () => {
 	const courseType = await readCourseType();
 	return courseType === "Old" ? qualities[1] : qualities[0];
-}
+};
 
 const getDirectoryName = (sectionIndex, sectionName, bPadding = false) => {
-	let padIndex = `${sectionIndex + 1}`
+	let padIndex = `${sectionIndex + 1}`;
 	if (bPadding) {
-		padIndex = padIndex.padStart(2, '0')
+		padIndex = padIndex.padStart(2, "0");
 	}
-	return removeInvalidCharacters(`${padIndex}${DELIMINATOR} ${sectionName}`)
-}
+	return removeInvalidCharacters(`${padIndex}${DELIMINATOR} ${sectionName}`);
+};
 
 const getFileName = (videoIndex, videoName, bPadding = false) => {
-	let padIndex = `${videoIndex + 1}`
+	let padIndex = `${videoIndex + 1}`;
 	if (bPadding) {
-		padIndex = padIndex.padStart(2, '0')
+		padIndex = padIndex.padStart(2, "0");
 	}
-	return removeInvalidCharacters(`${padIndex}${DELIMINATOR} ${videoName}`)
-}
+	return removeInvalidCharacters(`${padIndex}${DELIMINATOR} ${videoName}`);
+};
 
 const getVideoURL = async videoId => {
 	try {
 		const quality = await getQuality();
 		const response = await fetch(viewclipURL, {
-			method: 'POST',
+			method: "POST",
 			headers: {
-				'Content-Type': 'application/json',
-				'x-team': 'video-services',
+				"Content-Type": "application/json",
+				"x-team": "video-services",
 			},
 			body: JSON.stringify({
 				clipId: videoId,
 				mediaType: EXTENSION,
 				quality: quality,
 				online: true,
-				boundedContext: 'course',
-				versionId: '',
+				boundedContext: "course",
+				versionId: "",
 			}),
-		})
+		});
 
-		const json = await response.json()
-		return json.urls[0].url
+		const json = await response.json();
+		return json.urls[0].url;
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
-const getSubtitleURL = async (videoId, versionId, languageCode = 'en') => {
-	return subsURL + '/' + videoId + '/' + versionId + '/' + languageCode + '/'
-}
+const getSubtitleURL = async (videoId, versionId, languageCode = "en") => {
+	return subsURL + "/" + videoId + "/" + versionId + "/" + languageCode + "/";
+};
 
 const getPlaylistPath = (courseName, authorName) => {
 	try {
-		return getCourseRootPath(courseName, authorName) + '\\playlist.m3u8'
+		return getCourseRootPath(courseName, authorName) + "\\playlist.m3u8";
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
 const getExercisePath = (courseName, authorName) => {
 	try {
-		return getCourseRootPath(courseName, authorName) + '\\exercise.zip'
+		return getCourseRootPath(courseName, authorName) + "\\exercise.zip";
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
 const getCourseRootPath = (courseName, authorName) => {
 	try {
-		const rootDirectory = ROOT_DIRECTORY
-		const courseDirectory = authorName !== undefined ? `${courseName} By ${authorName}`.trim() : `${courseName}`.trim()
+		const rootDirectory = ROOT_DIRECTORY;
+		const courseDirectory = authorName !== undefined ? `${courseName} By ${authorName}`.trim() : `${courseName}`.trim();
 
-		return `${rootDirectory}\\${courseDirectory}`.replace(/(\r\n|\n|\r)/gm, '')
+		return `${rootDirectory}\\${courseDirectory}`.replace(/(\r\n|\n|\r)/gm, "");
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
 const getFilePath = (
 	courseName,
@@ -260,129 +259,129 @@ const getFilePath = (
 	forPlaylist = false,
 ) => {
 	try {
-		const sectionDirectory = getDirectoryName(sectionIndex, sectionName, addPadding)
-		const fileName = getFileName(videoIndex, videoName, addPadding)
+		const sectionDirectory = getDirectoryName(sectionIndex, sectionName, addPadding);
+		const fileName = getFileName(videoIndex, videoName, addPadding);
 
-		let filePath = `${sectionDirectory}\\${fileName}.${extension}`
+		let filePath = `${sectionDirectory}\\${fileName}.${extension}`;
 		if (!forPlaylist) {
-			let courseRootPath = getCourseRootPath(courseName, authorName)
-			filePath = `${courseRootPath}\\${filePath}`
+			let courseRootPath = getCourseRootPath(courseName, authorName);
+			filePath = `${courseRootPath}\\${filePath}`;
 		}
 
-		return filePath.replace(/(\r\n|\n|\r)/gm, '')
+		return filePath.replace(/(\r\n|\n|\r)/gm, "");
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
 const downloadVideo = async (videoURL, filePath) => {
 	try {
-		await downloadFile(videoURL, filePath)
-		log(response.actionStatus)
+		await downloadFile(videoURL, filePath);
+		log(response.actionStatus);
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
 const downloadSubs = async (subsURL, filePath) => {
 	try {
-		await downloadFile(subsURL, filePath)
-		log(response.actionStatus)
+		await downloadFile(subsURL, filePath);
+		log(response.actionStatus);
 	} catch (error) {
-		return error
+		return error;
 	}
-}
+};
 
 const printTimeStats = async (courseJSON, startingVideoId) => {
-	let stat = await getCourseStats(courseJSON, startingVideoId)
+	let stat = await getCourseStats(courseJSON, startingVideoId);
 
-	let friendlyTtl = new Date(stat.timeTotal * 1000).toISOString().substr(11, 8)
-	let friendlyTfn = new Date(stat.timeFromNow * 1000).toISOString().substr(11, 8)
-	let friendlyTfnDl = new Date(stat.timeDownloading * 1000).toISOString().substr(11, 8)
+	let friendlyTtl = new Date(stat.timeTotal * 1000).toISOString().substr(11, 8);
+	let friendlyTfn = new Date(stat.timeFromNow * 1000).toISOString().substr(11, 8);
+	let friendlyTfnDl = new Date(stat.timeDownloading * 1000).toISOString().substr(11, 8);
 
-	console.log(`Total course time: ${friendlyTtl}`)
-	console.log(`Time remaining: ${friendlyTfn}`)
-	console.log(`Time remaining downloading: ${friendlyTfnDl}`)
-}
+	console.log(`Total course time: ${friendlyTtl}`);
+	console.log(`Time remaining: ${friendlyTfn}`);
+	console.log(`Time remaining downloading: ${friendlyTfnDl}`);
+};
 
-let video_to_download = []
+let video_to_download = [];
 
 const getCourseStats = async (courseJSON, startingVideoId) => {
-	let timeFromNow = 0
-	let timeTotal = 0
+	let timeFromNow = 0;
+	let timeTotal = 0;
 	try {
-		const { authors, modules: sections } = courseJSON
+		const { authors, modules: sections } = courseJSON;
 
-		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle
-		if (authorName == undefined) authorName = 'noName'
+		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle;
+		if (authorName == undefined) authorName = "noName";
 
-		// download all videos when no startid was given
-		let startToggle = startingVideoId == null || startingVideoId == ''
+		// download all videos when no startID was given
+		let startToggle = startingVideoId == null || startingVideoId == "";
 
-		video_to_download = []
+		video_to_download = [];
 
 		for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-			const { contentItems: sectionItems } = sections[sectionIndex]
+			const { contentItems: sectionItems } = sections[sectionIndex];
 
 			for (let videoIndex = 0; videoIndex < sectionItems.length; videoIndex++) {
 				if (!CONTINUE_DOWNLOAD) {
-					CONTINUE_DOWNLOAD = false
-					log('Downloading stopped!!!')
-					return
+					CONTINUE_DOWNLOAD = false;
+					log("Downloading stopped!!!");
+					return;
 				}
 
-				const { id: videoId, duration } = sectionItems[videoIndex]
+				const { id: videoId, duration } = sectionItems[videoIndex];
 
-				timeTotal += duration
+				timeTotal += duration;
 
 				if (!startToggle) {
 					if (videoId == startingVideoId) {
-						startToggle = true
+						startToggle = true;
 					}
 				}
 
 				if (!startToggle) {
-					continue
+					continue;
 				}
 
-				video_to_download.push(videoId)
+				video_to_download.push(videoId);
 
-				timeFromNow += duration
+				timeFromNow += duration;
 			}
 		}
 
 		chrome.runtime.sendMessage({
-			action: 'badge',
+			action: "badge",
 			text: `${video_to_download.length}`,
-		})
+		});
 	} catch (error) {
-		log(error, 'ERROR')
-		return error
+		log(error, "ERROR");
+		return error;
 	}
 
-	const speed = await readSpeed()
+	const speed = await readSpeed();
 
-	let timeDownloading = (speed / 100) * timeFromNow
+	let timeDownloading = (speed / 100) * timeFromNow;
 
-	return { timeFromNow, timeTotal, timeDownloading }
-}
+	return { timeFromNow, timeTotal, timeDownloading };
+};
 
 const downloadPlaylist = async courseJSON => {
 	try {
-		const { title: courseName, authors, modules: sections } = courseJSON
+		const { title: courseName, authors, modules: sections } = courseJSON;
 
-		let playlistLines = []
+		let playlistLines = [];
 
-		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle
-		if (authorName == undefined) authorName = 'noName'
+		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle;
+		if (authorName == undefined) authorName = "noName";
 
 		for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-			const { title: sectionName, contentItems: sectionItems } = sections[sectionIndex]
+			const { title: sectionName, contentItems: sectionItems } = sections[sectionIndex];
 
 			for (let videoIndex = 0; videoIndex < sectionItems.length; videoIndex++) {
-				const { title: videoName } = sectionItems[videoIndex]
+				const { title: videoName } = sectionItems[videoIndex];
 
-				const isLeadingZeroAlways = await readIsLeadingZeroAlways()
+				const isLeadingZeroAlways = await readIsLeadingZeroAlways();
 				const filePath = getFilePath(
 					removeInvalidCharacters(courseName),
 					removeInvalidCharacters(authorName),
@@ -393,89 +392,89 @@ const downloadPlaylist = async courseJSON => {
 					`${EXTENSION}`,
 					isLeadingZeroAlways || sectionItems.length > 9,
 					true,
-				)
+				);
 
-				playlistLines.push(filePath)
+				playlistLines.push(filePath);
 			}
 		}
 
-		let playlistText = playlistLines.join('\n')
-		let playlistPath = getPlaylistPath(removeInvalidCharacters(courseName), removeInvalidCharacters(authorName))
+		let playlistText = playlistLines.join("\n");
+		let playlistPath = getPlaylistPath(removeInvalidCharacters(courseName), removeInvalidCharacters(authorName));
 
-		await downloadPlaylistText(playlistText, playlistPath)
+		await downloadPlaylistText(playlistText, playlistPath);
 	} catch (error) {
-		log(error, 'ERROR')
-		chrome.runtime.sendMessage({ Status: 'Stopped' })
-		return error
+		log(error, "ERROR");
+		chrome.runtime.sendMessage({ Status: "Stopped" });
+		return error;
 	}
-}
+};
 
 const downloadPlaylistText = async (playlistText, path) => {
 	let playlistBlob = new Blob([playlistText], {
-		type: 'audio/x-mpegurl',
-	})
+		type: "audio/x-mpegurl",
+	});
 
-	var url = window.URL.createObjectURL(playlistBlob)
-	await downloadFile(url, path)
-}
+	var url = window.URL.createObjectURL(playlistBlob);
+	await downloadFile(url, path);
+};
 
 function removeDownloadItem(item) {
-	if (!video_to_download.includes(item)) return
+	if (!video_to_download.includes(item)) return;
 
-	var idx = video_to_download.indexOf(item)
-	video_to_download.splice(idx, 1)
+	var idx = video_to_download.indexOf(item);
+	video_to_download.splice(idx, 1);
 
 	chrome.runtime.sendMessage({
-		action: 'badge',
+		action: "badge",
 		text: `${video_to_download.length}`,
-	})
+	});
 }
 
 const downloadCourse = async (courseJSON, startingVideoId) => {
 	try {
-		const { title: courseName, authors, modules: sections } = courseJSON
+		const { title: courseName, authors, modules: sections } = courseJSON;
 
-		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle
-		if (authorName == undefined) authorName = 'noName'
+		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle;
+		if (authorName == undefined) authorName = "noName";
 
-		// download all videos when no startid was given
-		let startToggle = startingVideoId == null || startingVideoId == ''
+		// download all videos when no startID was given
+		let startToggle = startingVideoId == null || startingVideoId == "";
 
-		log(`#################### "${courseName} By ${authorName}" ####################`, 'INFO')
+		log(`#################### "${courseName} By ${authorName}" ####################`, "INFO");
 
 		// store the download failed file information to try again after done
-		let to_download_again = []
-		await getCourseStats(courseJSON, startingVideoId)
+		let to_download_again = [];
+		await getCourseStats(courseJSON, startingVideoId);
 
-		chrome.runtime.sendMessage({ CourseTitle: courseName })
+		chrome.runtime.sendMessage({ CourseTitle: courseName });
 
 		for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-			const { title: sectionName, contentItems: sectionItems } = sections[sectionIndex]
+			const { title: sectionName, contentItems: sectionItems } = sections[sectionIndex];
 
-			log(`==================== "${sectionName}" ====================`, 'INFO')
+			log(`==================== "${sectionName}" ====================`, "INFO");
 
 			for (let videoIndex = 0; videoIndex < sectionItems.length; videoIndex++) {
 				if (!CONTINUE_DOWNLOAD) {
-					log('Downloading stopped!!!')
-					return
+					log("Downloading stopped!!!");
+					return;
 				}
 
-				const { id: videoId, title: videoName, version: versionId, duration } = sectionItems[videoIndex]
+				const { id: videoId, title: videoName, version: versionId, duration } = sectionItems[videoIndex];
 
 				if (!startToggle) {
 					if (videoId == startingVideoId) {
-						startToggle = true
+						startToggle = true;
 					}
 				}
 
 				if (!startToggle) {
-					console.log(`Skipping [${videoId}] ${videoName}`)
-					continue
+					console.log(`Skipping [${videoId}] ${videoName}`);
+					continue;
 				}
 
-				console.log(`Downloading [${videoId}] ${videoName}`)
+				console.log(`Downloading [${videoId}] ${videoName}`);
 
-				const isLeadingZeroAlways = await readIsLeadingZeroAlways()
+				const isLeadingZeroAlways = await readIsLeadingZeroAlways();
 				const filePath = getFilePath(
 					removeInvalidCharacters(courseName),
 					removeInvalidCharacters(authorName),
@@ -485,7 +484,7 @@ const downloadCourse = async (courseJSON, startingVideoId) => {
 					removeInvalidCharacters(videoName),
 					`${EXTENSION}`,
 					isLeadingZeroAlways || sectionItems.length > 9,
-				)
+				);
 
 				const filePath_subs = getFilePath(
 					removeInvalidCharacters(courseName),
@@ -496,38 +495,38 @@ const downloadCourse = async (courseJSON, startingVideoId) => {
 					removeInvalidCharacters(videoName),
 					`${EXTENSION_SUBS}`,
 					isLeadingZeroAlways || sectionItems.length > 9,
-				)
+				);
 
-				const extensionIndex = filePath_subs.lastIndexOf(`.${EXTENSION_SUBS}`)
-				const filePathNoExt_subs = filePath_subs.substring(0, extensionIndex)
+				const extensionIndex = filePath_subs.lastIndexOf(`.${EXTENSION_SUBS}`);
+				const filePathNoExt_subs = filePath_subs.substring(0, extensionIndex);
 
-				log(`Downloading... "${videoName}"`, 'DOWNLOAD')
-				chrome.runtime.sendMessage({ Status: 'Downloading...' })
+				log(`Downloading... "${videoName}"`, "DOWNLOAD");
+				chrome.runtime.sendMessage({ Status: "Downloading..." });
 
-				let exceptionId = 0
+				let exceptionId = 0;
 				try {
 					if (versionId) {
-						const subsURL = await getSubtitleURL(videoId, versionId)
-						await downloadSubs(subsURL, filePath_subs)
+						const subsURL = await getSubtitleURL(videoId, versionId);
+						await downloadSubs(subsURL, filePath_subs);
 						// Secondary language logic
-						const secondaryLangCode = await readSecondaryLanguageCode()
+						const secondaryLangCode = await readSecondaryLanguageCode();
 						if (
 							secondaryLangCode !== null &&
 							secondaryLangCode !== undefined &&
-							secondaryLangCode !== '' &&
-							secondaryLangCode !== 'none'
+							secondaryLangCode !== "" &&
+							secondaryLangCode !== "none"
 						) {
-							const langSubsUrl = await getSubtitleURL(videoId, versionId, secondaryLangCode)
-							const filePath_subsLang = `${filePathNoExt_subs}.${secondaryLangCode}.vtt`
-							await downloadSubs(langSubsUrl, filePath_subsLang)
+							const langSubsUrl = await getSubtitleURL(videoId, versionId, secondaryLangCode);
+							const filePath_subsLang = `${filePathNoExt_subs}.${secondaryLangCode}.vtt`;
+							await downloadSubs(langSubsUrl, filePath_subsLang);
 						}
 					}
 
-					//Index to descriminate subs or video
-					exceptionId = 1
+					//Index to discriminate subs or video
+					exceptionId = 1;
 
-					const videoURL = await getVideoURL(videoId)
-					downloadVideo(videoURL, filePath)
+					const videoURL = await getVideoURL(videoId);
+					downloadVideo(videoURL, filePath);
 				} catch (error) {
 					to_download_again.push({
 						expId: exceptionId,
@@ -536,287 +535,287 @@ const downloadCourse = async (courseJSON, startingVideoId) => {
 						filePath: filePath,
 						filePath_subs: filePath_subs,
 						duration: duration,
-					})
+					});
 
-					continue
+					continue;
 				}
 
-				// Progress Informaton Update on Storage
+				// Progress Information Update on Storage
 				chrome.runtime.sendMessage({
 					Completion_Module: [sectionIndex + 1, sections.length],
 					Completion_Video: [videoIndex + 1, sectionItems.length],
-					Status: 'Downloading...',
-				})
-				removeDownloadItem(videoId)
+					Status: "Downloading...",
+				});
+				removeDownloadItem(videoId);
 
-				// So we dont even want to sleep if we are gonna cancel this run anyways....
+				// So we don't even want to sleep if we are gonna cancel this run anyways....
 				if (!CONTINUE_DOWNLOAD) {
-					continue
+					continue;
 				}
 
-				chrome.runtime.sendMessage({ Status: 'Waiting...' })
+				chrome.runtime.sendMessage({ Status: "Waiting..." });
 
-				let speed = await readSpeed()
-				let maxDuration = await readMaxDuration()
+				let speed = await readSpeed();
+				let maxDuration = await readMaxDuration();
 				// Sleep for minimum duration btw the time with percent and the max duration time
 				if (maxDuration != 0) {
-					log(`maxDuration: ${maxDuration} duration: ${duration} speed: ${speed}`, "INFO")
-          maxDuration = Math.floor(Math.random() * (maxDuration - Number(speed)) + Number(speed))
-					CURRENT_INTERVAL = updateWaitStats(maxDuration * 1000)
-					CURRENT_SLEEP = sleep(maxDuration * 1000)
+					log(`maxDuration: ${maxDuration} duration: ${duration} speed: ${speed}`, "INFO");
+					maxDuration = Math.floor(Math.random() * (maxDuration - Number(speed)) + Number(speed));
+					CURRENT_INTERVAL = updateWaitStats(maxDuration * 1000);
+					CURRENT_SLEEP = sleep(maxDuration * 1000);
 					// CURRENT_INTERVAL = updateWaitStats(Math.min(duration * 10 * speed, maxDuration * 1000))
 					// CURRENT_SLEEP = sleep(Math.min(duration * 10 * speed, maxDuration * 1000))
-					log(`Sleeping for ${maxDuration} seconds...`, "INFO")
-					await CURRENT_SLEEP
-					CURRENT_INTERVAL.abort()
+					log(`Sleeping for ${maxDuration} seconds...`, "INFO");
+					await CURRENT_SLEEP;
+					CURRENT_INTERVAL.abort();
 				}
-				// Sleep for duration based on a constant updated by speedPercent from extesion browser
+				// Sleep for duration based on a constant updated by speedPercent from extension browser
 				else {
-					CURRENT_INTERVAL = updateWaitStats(Math.max(duration * 10 * speed, DOWNLOAD_TIMEOUT))
-					CURRENT_SLEEP = sleep(Math.max(duration * 10 * speed, DOWNLOAD_TIMEOUT))
-					await CURRENT_SLEEP
-					CURRENT_INTERVAL.abort()
+					CURRENT_INTERVAL = updateWaitStats(Math.max(duration * 10 * speed, DOWNLOAD_TIMEOUT));
+					CURRENT_SLEEP = sleep(Math.max(duration * 10 * speed, DOWNLOAD_TIMEOUT));
+					await CURRENT_SLEEP;
+					CURRENT_INTERVAL.abort();
 				}
 			}
 		}
 
-		chrome.runtime.sendMessage({ Status: 'Retry...' })
+		chrome.runtime.sendMessage({ Status: "Retry..." });
 		for (let i = to_download_again.length - 1; i >= 0; i--) {
 			chrome.runtime.sendMessage({
-				action: 'badge',
+				action: "badge",
 				text: `${to_download_again.length}`,
-			})
+			});
 
-			let fileInfo = to_download_again.shift()
+			let fileInfo = to_download_again.shift();
 			if (fileInfo.expId === 0) {
-				const subsURL = await getSubtitleURL(fileInfo.videoId, fileInfo.verId)
-				await downloadSubs(subsURL, fileInfo.filePath_subs)
+				const subsURL = await getSubtitleURL(fileInfo.videoId, fileInfo.verId);
+				await downloadSubs(subsURL, fileInfo.filePath_subs);
 				// Secondary language logic
-				const extensionIndex = fileInfo.filePath_subs.lastIndexOf(`.${EXTENSION_SUBS}`)
-				const filePathNoExt_subs = fileInfo.filePath_subs.substring(0, extensionIndex)
-				const secondaryLangCode = await readSecondaryLanguageCode()
+				const extensionIndex = fileInfo.filePath_subs.lastIndexOf(`.${EXTENSION_SUBS}`);
+				const filePathNoExt_subs = fileInfo.filePath_subs.substring(0, extensionIndex);
+				const secondaryLangCode = await readSecondaryLanguageCode();
 				if (
 					secondaryLangCode !== null &&
 					secondaryLangCode != undefined &&
-					secondaryLangCode !== '' &&
-					secondaryLangCode !== 'none'
+					secondaryLangCode !== "" &&
+					secondaryLangCode !== "none"
 				) {
-					const langSubsUrl = await getSubtitleURL(fileInfo.videoId, fileInfo.versionId, secondaryLangCode)
-					const filePath_subsLang = `${filePathNoExt_subs}.${secondaryLangCode}.vtt`
-					await downloadSubs(langSubsUrl, filePath_subsLang)
+					const langSubsUrl = await getSubtitleURL(fileInfo.videoId, fileInfo.versionId, secondaryLangCode);
+					const filePath_subsLang = `${filePathNoExt_subs}.${secondaryLangCode}.vtt`;
+					await downloadSubs(langSubsUrl, filePath_subsLang);
 				}
 			}
-			const videoURL = await getVideoURL(fileInfo.videoId)
-			downloadVideo(videoURL, fileInfo.filePath)
+			const videoURL = await getVideoURL(fileInfo.videoId);
+			downloadVideo(videoURL, fileInfo.filePath);
 
-			let speed = await readSpeed()
-			CURRENT_INTERVAL = updateWaitStats(Math.max(fileInfo.duration * 10 * speed, DOWNLOAD_TIMEOUT))
-			CURRENT_SLEEP = sleep(Math.max(fileInfo.duration * 10 * speed, DOWNLOAD_TIMEOUT))
-			await CURRENT_SLEEP
-			CURRENT_INTERVAL.abort()
+			let speed = await readSpeed();
+			CURRENT_INTERVAL = updateWaitStats(Math.max(fileInfo.duration * 10 * speed, DOWNLOAD_TIMEOUT));
+			CURRENT_SLEEP = sleep(Math.max(fileInfo.duration * 10 * speed, DOWNLOAD_TIMEOUT));
+			await CURRENT_SLEEP;
+			CURRENT_INTERVAL.abort();
 		}
 	} catch (error) {
-		log(error, 'ERROR')
-		chrome.runtime.sendMessage({ Status: 'Errored' })
-		return error
+		log(error, "ERROR");
+		chrome.runtime.sendMessage({ Status: "Errored" });
+		return error;
 	} finally {
-		if (CONTINUE_DOWNLOAD) chrome.runtime.sendMessage({ Status: 'Finished' })
-		else chrome.runtime.sendMessage({ Status: 'Cancelled' })
+		if (CONTINUE_DOWNLOAD) chrome.runtime.sendMessage({ Status: "Finished" });
+		else chrome.runtime.sendMessage({ Status: "Cancelled" });
 
-		log('Downloading finished!!!')
+		log("Downloading finished!!!");
 		//confirm("Downloading finished");
 
-		video_to_download = []
-		chrome.runtime.sendMessage({ action: 'badge', text: `` })
+		video_to_download = [];
+		chrome.runtime.sendMessage({ action: "badge", text: `` });
 
-		CONTINUE_DOWNLOAD = false
+		CONTINUE_DOWNLOAD = false;
 	}
-}
+};
 
 chrome.runtime.onMessage.addListener(message => {
-	if (typeof message !== 'object') {
-		return false
+	if (typeof message !== "object") {
+		return false;
 	}
 
 	if (message.btnCmd) {
-		var e = $.Event('keypress')
-		EXTENSION_ENABLED = true
+		var e = $.Event("keypress");
+		EXTENSION_ENABLED = true;
 
-		if (message.btnCmd.cmd === 'DwnAll') {
-			if (CONTINUE_DOWNLOAD) return
+		if (message.btnCmd.cmd === "DwnAll") {
+			if (CONTINUE_DOWNLOAD) return;
 
-			EXTENSION_ENABLED = true
-			e.which = 99 // Character 'a'
-		} else if (message.btnCmd.cmd === 'DwnCur') {
-			if (CONTINUE_DOWNLOAD) return
+			EXTENSION_ENABLED = true;
+			e.which = 99; // Character 'a'
+		} else if (message.btnCmd.cmd === "DwnCur") {
+			if (CONTINUE_DOWNLOAD) return;
 
-			EXTENSION_ENABLED = true
-			e.which = 86 // Character 'a'
-		} else if (message.btnCmd.cmd === 'AddCourse') {
-			// must be in downlonding state in advance
+			EXTENSION_ENABLED = true;
+			e.which = 86; // Character 'a'
+		} else if (message.btnCmd.cmd === "AddCourse") {
+			// must be in downloading state in advance
 			// if (!CONTINUE_DOWNLOAD)
 			// 	return;
 
-			e.which = 96 // Character 'a'
-		} else if (message.btnCmd.cmd === 'Skip') {
-			CURRENT_SLEEP?.abort()
-			return
-		} else if (message.btnCmd.cmd === 'Stop') {
-			CONTINUE_DOWNLOAD = false
-			e.which = 115 // Character 's'
+			e.which = 96; // Character 'a'
+		} else if (message.btnCmd.cmd === "Skip") {
+			CURRENT_SLEEP?.abort();
+			return;
+		} else if (message.btnCmd.cmd === "Stop") {
+			CONTINUE_DOWNLOAD = false;
+			e.which = 115; // Character 's'
 		}
 
-		$(document).trigger(e)
+		$(document).trigger(e);
 	}
-})
+});
 
 const downloadExerciseFiles = async courseJSON => {
 	try {
-		const { id: courseId, title: courseName, authors } = courseJSON
+		const { id: courseId, title: courseName, authors } = courseJSON;
 
-		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle
-		if (authorName == undefined) authorName = 'noName'
+		let authorName = authors[0].displayName != undefined ? authors[0].displayName : authors[0].authorHandle;
+		if (authorName == undefined) authorName = "noName";
 
 		let exerciseLinkJson = await (
 			await fetch(`https://app.pluralsight.com/learner/user/courses/${courseId}/exercise-files-url`)
-		).json()
+		).json();
 
-		let targetPath = getExercisePath(removeInvalidCharacters(courseName), removeInvalidCharacters(authorName))
+		let targetPath = getExercisePath(removeInvalidCharacters(courseName), removeInvalidCharacters(authorName));
 
-		await downloadFile(exerciseLinkJson.exerciseFilesUrl, targetPath)
+		await downloadFile(exerciseLinkJson.exerciseFilesUrl, targetPath);
 	} catch (error) {
-		log(error, 'ERROR')
+		log(error, "ERROR");
 	}
-}
+};
 
-let jsonCnt = 0
+let jsonCnt = 0;
 
 // main-function
 $(() => {
 	$(document).keypress(async e => {
-		console.log(`Keypress: ${e.which}`)
+		console.log(`Keypress: ${e.which}`);
 
-		const cmdToggleEnabled = e.which === 101 || e.which === 69
-		const cmdStopDownload = e.which === 115 || e.which === 83
-		const cmdDownloadAll = e.which === 99 || e.which === 67 // Download the entire course | key: c
-		const cmdDownloadFromNowOn = e.which === 86 || e.which === 118 //key: v
-		const cmdPlaylist = e.which == 112 || e.which == 80 // p
-		const cmdExerciseFiles = e.which == 120 || e.which == 88 // x
-		const cmdTime = e.which == 116 || e.which == 84
-		const cmdAddCourse = e.which == 96 || e.which == 65 // add course
+		const cmdToggleEnabled = e.which === 101 || e.which === 69;
+		const cmdStopDownload = e.which === 115 || e.which === 83;
+		const cmdDownloadAll = e.which === 99 || e.which === 67; // Download the entire course | key: c
+		const cmdDownloadFromNowOn = e.which === 86 || e.which === 118; //key: v
+		const cmdPlaylist = e.which == 112 || e.which == 80; // p
+		const cmdExerciseFiles = e.which == 120 || e.which == 88; // x
+		const cmdTime = e.which == 116 || e.which == 84;
+		const cmdAddCourse = e.which == 96 || e.which == 65; // add course
 
 		if (cmdToggleEnabled) {
 			// Enable/Disabled extension bindings
-			!EXTENSION_ENABLED ? log('Enabled the extension bindings.') : log('Disabled the extension bindings.')
-			EXTENSION_ENABLED = !EXTENSION_ENABLED
-			return
+			!EXTENSION_ENABLED ? log("Enabled the extension bindings.") : log("Disabled the extension bindings.");
+			EXTENSION_ENABLED = !EXTENSION_ENABLED;
+			return;
 		}
 
 		if (!EXTENSION_ENABLED) {
-			return
+			return;
 		}
 		if (cmdStopDownload) {
 			// KEYPRESS `s`
 			// Stops the download the process, it won't stop the current download, it will abort the download of further videos
-			log('Stopping the download process...')
-			CONTINUE_DOWNLOAD = false
-			CURRENT_SLEEP?.abort()
+			log("Stopping the download process...");
+			CONTINUE_DOWNLOAD = false;
+			CURRENT_SLEEP?.abort();
 
 			chrome.runtime.sendMessage({
-				CourseTitle: '',
+				CourseTitle: "",
 				Completion_Module: [0, 0],
 				Completion_Video: [0, 0],
-				Status: 'Ready...',
-			})
+				Status: "Ready...",
+			});
 
-			return
+			return;
 		}
 		if (cmdExerciseFiles || cmdPlaylist || cmdDownloadAll || cmdDownloadFromNowOn || cmdTime || cmdAddCourse) {
-			log('Downloading course ' + (cmdDownloadAll ? 'from the beginning' : 'from now on') + ' ...')
-			log('Fetching course information...')
+			log("Downloading course " + (cmdDownloadAll ? "from the beginning" : "from now on") + " ...");
+			log("Fetching course information...");
 
-			const courseJSON = JSON.parse($(window.__NEXT_DATA__).text()).props.pageProps.tableOfContents
+			const courseJSON = JSON.parse($(window.__NEXT_DATA__).text()).props.pageProps.tableOfContents;
 
 			if (cmdAddCourse) {
-				log('Add Course')
-				let addedCourses = []
-				chrome.storage.local.get('addedCourses', data => {
-					if (data.addedCourses) addedCourses.push.apply(addedCourses, data.addedCourses)
+				log("Add Course");
+				let addedCourses = [];
+				chrome.storage.local.get("addedCourses", data => {
+					if (data.addedCourses) addedCourses.push.apply(addedCourses, data.addedCourses);
 
-					courseJSON.startingVideoId = null
-					addedCourses.push(courseJSON)
-					chrome.storage.local.set({ addedCourses: addedCourses })
+					courseJSON.startingVideoId = null;
+					addedCourses.push(courseJSON);
+					chrome.storage.local.set({ addedCourses: addedCourses });
 
-					chrome.runtime.sendMessage({ AddedCourseCount: addedCourses.length })
-				})
-				return
+					chrome.runtime.sendMessage({ AddedCourseCount: addedCourses.length });
+				});
+				return;
 			}
 
 			if (cmdDownloadAll || cmdDownloadFromNowOn) {
-				log('Downloading course ' + (cmdDownloadAll ? 'from the beginning' : 'from now on') + ' ...')
-				log('Fetching course information...')
+				log("Downloading course " + (cmdDownloadAll ? "from the beginning" : "from now on") + " ...");
+				log("Fetching course information...");
 
-				CONTINUE_DOWNLOAD = true
-				let startingVideoId = cmdDownloadFromNowOn ? getCurrentVideoId() : null
+				CONTINUE_DOWNLOAD = true;
+				let startingVideoId = cmdDownloadFromNowOn ? getCurrentVideoId() : null;
 				if (!cmdDownloadFromNowOn) {
-					chrome.runtime.sendMessage({ Status: 'Downloading...' })
-					await downloadPlaylist(courseJSON)
+					chrome.runtime.sendMessage({ Status: "Downloading..." });
+					await downloadPlaylist(courseJSON);
 					// you can skip the waiting for exercise download to complete
-					CURRENT_SLEEP = downloadExerciseFiles(courseJSON)
-					await CURRENT_SLEEP
+					CURRENT_SLEEP = downloadExerciseFiles(courseJSON);
+					await CURRENT_SLEEP;
 				}
 
-				await downloadCourse(courseJSON, startingVideoId)
+				await downloadCourse(courseJSON, startingVideoId);
 
 				while (true) {
 					let nextCourse = await new Promise((resolve, _) =>
-						chrome.storage.local.get('addedCourses', data => {
-							if (!data) resolve()
+						chrome.storage.local.get("addedCourses", data => {
+							if (!data) resolve();
 							else {
-								let courses = data['addedCourses']
-								let dwnCourse = courses.shift()
-								chrome.storage.local.set({ addedCourses: courses })
+								let courses = data["addedCourses"];
+								let dwnCourse = courses.shift();
+								chrome.storage.local.set({ addedCourses: courses });
 
 								chrome.runtime.sendMessage({
 									AddedCourseCount: courses.length,
-								})
-								resolve(dwnCourse)
+								});
+								resolve(dwnCourse);
 							}
 						}),
-					)
+					);
 					if (!nextCourse) {
-						chrome.runtime.sendMessage({ AddedCourseCount: 0 })
-						break
+						chrome.runtime.sendMessage({ AddedCourseCount: 0 });
+						break;
 					}
 
-					log(`Download course : ${nextCourse.title}`)
+					log(`Download course : ${nextCourse.title}`);
 
-					CONTINUE_DOWNLOAD = true
-					await downloadPlaylist(nextCourse)
+					CONTINUE_DOWNLOAD = true;
+					await downloadPlaylist(nextCourse);
 					// you can skip the waiting for exercise download to complete
-					CURRENT_SLEEP = downloadExerciseFiles(nextCourse)
-					await CURRENT_SLEEP
-					await downloadCourse(nextCourse, null)
+					CURRENT_SLEEP = downloadExerciseFiles(nextCourse);
+					await CURRENT_SLEEP;
+					await downloadCourse(nextCourse, null);
 				}
 			} else {
 				if (cmdPlaylist) {
-					chrome.runtime.sendMessage({ Status: 'Downloading...' })
-					await downloadPlaylist(courseJSON)
-					return
+					chrome.runtime.sendMessage({ Status: "Downloading..." });
+					await downloadPlaylist(courseJSON);
+					return;
 				}
 
 				if (cmdExerciseFiles) {
-					chrome.runtime.sendMessage({ Status: 'Downloading...' })
+					chrome.runtime.sendMessage({ Status: "Downloading..." });
 
-					CURRENT_SLEEP = downloadExerciseFiles(courseJSON)
-					await CURRENT_SLEEP
-					return
+					CURRENT_SLEEP = downloadExerciseFiles(courseJSON);
+					await CURRENT_SLEEP;
+					return;
 				}
 				if (cmdTime) {
-					await printTimeStats(courseJSON, getCurrentVideoId())
-					return
+					await printTimeStats(courseJSON, getCurrentVideoId());
+					return;
 				}
 			}
 		}
-	})
-})
+	});
+});
